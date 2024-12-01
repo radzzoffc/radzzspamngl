@@ -18,7 +18,7 @@ async function sendSpam(target, message, amount) {
                 .map(() => Math.random().toString(36)[2])
                 .join('');
 
-            const finalMessage = `${message}\nEXECUTION INVATIONS`;
+            const finalMessage = `${message}\nANONIMOUS INVATIONS`;
             const data = new URLSearchParams({
                 username,
                 question: finalMessage,
