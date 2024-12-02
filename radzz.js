@@ -1,7 +1,7 @@
 // Script Backend untuk Web (Spam NGL)
 
-const form = document.querySelector("#spamForm"); // Form utama
-const resultContainer = document.querySelector("#resultContainer"); // Kontainer hasil
+const form = document.querySelector("spamForm"); // Form utama
+const resultContainer = document.querySelector("resultContainer"); // Kontainer hasil
 
 // Fungsi memvalidasi dan memproses link NGL
 function processNGLLink(link) {
