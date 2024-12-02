@@ -1,101 +1,123 @@
-// Ambil elemen-elemen penting
-const form = document.querySelector("#spamForm");
-const logContainer = document.querySelector("#logContainer");
-const spamButton = document.querySelector("#spamButton");
+document.getElementById("spamForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
 
-// Fungsi untuk memproses link atau username
-function processTarget(target) {
-    let username;
+    const target = document.getElementById("target").value.trim();
+    const message = document.getElementById("message").value.trim();
+    const amount = parseInt(document.getElementById("amount").value.trim(), 10);
+    const logContainer = document.getElementById("logContainer");
 
-    if (target.startsWith("https://confess.ngl.link/") || target.startsWith("https://ngl.link/")) {
-        username = target.replace(/https:\/\/(confess\.ngl\.link|ngl\.link)\//, "").split("/")[0];
-    } else {
-        username = target; // Asumsi langsung username
+    // Clear log
+    logContainer.innerHTML = "";
+
+    if (!target || !message || isNaN(amount) || amount <= 0 || amount > 100) {
+        logMessage("⚠️ Pastikan semua input valid (target, pesan, jumlah <= 100)", "error");
+        return;
     }
 
-    if (!username) {
-        throw new Error("Username atau link target tidak valid.");
+    try {
+        // Validasi dan proses link/username
+        const username = processNGLLink(target);
+        logMessage(`✅ Link diproses: ${username}`, "success");
+
+        logMessage(`⏳ Memulai spam sebanyak ${amount} kali...`, "info");
+
+        let successCount = 0;
+
+        // Mulai spam
+        for (let i = 0; i < amount; i++) {
+            const deviceId = generateDeviceId();
+            const finalMessage = `${message}\nANONIMOUS INVATION`;
+
+            const response = await sendSpam(username, finalMessage, deviceId);
+
+            if (response.status === 200) {
+                successCount++;
+                logMessage(`✅ Spam ke-${i + 1} berhasil: ${finalMessage}`, "success");
+            } else {
+                logMessage(`❌ Spam ke-${i + 1} gagal: ${response.error}`, "error");
+            }
+
+            // Perbarui progres
+            updateProgress(successCount, amount);
+        }
+
+        logMessage(`🎉 Spam selesai! Total berhasil: ${successCount} dari ${amount}`, "success");
+    } catch (err) {
+        logMessage(`❌ Error: ${err.message}`, "error");
+    }
+});
+
+// Fungsi untuk validasi dan memproses link NGL
+function processNGLLink(link) {
+    let username;
+
+    // Dukungan untuk berbagai jenis custom link
+    const regex = /https:\/\/(?:[a-zA-Z0-9-_]+\.)?(ngl\.link|confess\.ngl\.link)\/([a-zA-Z0-9-_]+)/;
+
+    const match = link.match(regex);
+
+    if (match && match[2]) {
+        username = match[2];
+    } else {
+        throw new Error("Link tidak valid. Gunakan format yang sesuai.");
     }
 
     return username;
 }
 
-// Fungsi untuk melakukan spam request
-async function sendSpam(username, message, count) {
-    const results = [];
-    for (let i = 0; i < count; i++) {
-        const deviceId = crypto.randomUUID(); // Membuat ID perangkat unik
-        const finalMessage = `${message}\nANONIMOUS SPAM`;
-        const data = { username, question: finalMessage, deviceId };
-
-        try {
-            const response = await fetch("https://ngl.link/api/submit", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded",
-                },
-                body: new URLSearchParams(data),
-            });
-
-            if (response.ok) {
-                results.push(`Spam ${i + 1}: Sukses`);
-            } else {
-                results.push(`Spam ${i + 1}: Gagal`);
-            }
-        } catch (error) {
-            results.push(`Spam ${i + 1}: Error - ${error.message}`);
-        }
-
-        // Update log setiap iterasi
-        updateLog(results[results.length - 1]);
-
-        // Delay opsional 1 detik untuk menghindari rate limit
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
-
-    return results;
-}
-
-// Fungsi untuk memperbarui log
-function updateLog(entry) {
-    const logEntry = document.createElement("div");
-    logEntry.className = "log-entry";
-    logEntry.textContent = entry;
-    logContainer.appendChild(logEntry);
-    logContainer.scrollTop = logContainer.scrollHeight; // Auto-scroll ke bawah
-}
-
-// Event handler untuk form submission
-form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-
-    const target = document.querySelector("#target").value.trim();
-    const message = document.querySelector("#message").value.trim();
-    const amount = parseInt(document.querySelector("#amount").value, 10);
-
-    // Validasi input
-    if (!target || !message || isNaN(amount) || amount <= 0 || amount > 100) {
-        alert("Harap masukkan data dengan benar! Jumlah spam maksimal 100.");
-        return;
-    }
-
-    // Nonaktifkan tombol selama proses
-    spamButton.disabled = true;
-    spamButton.textContent = "Mengirimkan...";
+// Fungsi mengirim spam (request API NGL)
+async function sendSpam(username, question, deviceId) {
+    const data = new URLSearchParams({
+        username,
+        question,
+        deviceId,
+    });
 
     try {
-        const username = processTarget(target);
-        logContainer.innerHTML = ""; // Bersihkan log lama
-        updateLog("⏳ Memulai spam...");
+        const response = await fetch("https://ngl.link/api/submit", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            },
+            body: data.toString(),
+        });
 
-        const results = await sendSpam(username, message, amount);
-
-        updateLog("✅ Spam selesai!");
-        updateLog(results.join("\n"));
+        return { status: response.status };
     } catch (error) {
-        updateLog(`❌ Error: ${error.message}`);
-    } finally {
-        spamButton.disabled = false;
-        spamButton.textContent = "Kirimkan";
+        return { status: 500, error: error.message };
     }
-});
+}
+
+// Fungsi untuk log pesan ke UI
+function logMessage(message, type = "info") {
+    const logContainer = document.getElementById("logContainer");
+    const logEntry = document.createElement("div");
+    logEntry.classList.add("log-entry", type);
+    logEntry.textContent = message;
+    logContainer.appendChild(logEntry);
+    logContainer.scrollTop = logContainer.scrollHeight;
+}
+
+// Fungsi memperbarui progres
+function updateProgress(current, total) {
+    const spamButton = document.getElementById("spamButton");
+    spamButton.textContent = `Mengirim... (${current}/${total})`;
+
+    if (current === total) {
+        spamButton.textContent = "Kirimkan";
+        spamButton.disabled = false;
+    } else {
+        spamButton.disabled = true;
+    }
+}
+
+// Fungsi untuk membuat Device ID random
+function generateDeviceId() {
+    const length = 21;
+    const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let result = "";
+    for (let i = 0; i < length; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+}
