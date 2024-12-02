@@ -1,81 +1,84 @@
-const spamForm = document.getElementById('spamForm');
-const logContainer = document.getElementById('logContainer');
-const spamButton = document.getElementById('spamButton');
+// Script Backend untuk Web (Spam NGL)
 
-// Fungsi untuk mengirim spam dengan penanganan asinkron
-async function sendSpam(target, message, amount) {
-    const username = target.replace('https://ngl.link/', '').trim();
-    const delay = 2000; // Jeda 2 detik antar request
-    let counter = 0;
+const form = document.querySelector("#spamForm"); // Form utama
+const resultContainer = document.querySelector("#resultContainer"); // Kontainer hasil
 
-    // Fungsi delay (tunggu waktu tertentu)
-    const delayPromise = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+// Fungsi memvalidasi dan memproses link NGL
+function processNGLLink(link) {
+    let username;
 
-    for (let i = 0; i < amount; i++) {
+    // Validasi link dari confess.ngl.link dan pengalihan /confessions
+    if (link.startsWith("https://confess.ngl.link/") || link.startsWith("https://ngl.link/")) {
+        username = link.replace(/https:\/\/(confess\.ngl\.link|ngl\.link)\//, "").split("/")[0];
+    } else {
+        throw new Error("Link tidak valid. Gunakan format yang sesuai.");
+    }
+
+    // Pastikan username terdeteksi
+    if (!username) throw new Error("Username tidak ditemukan dalam link.");
+
+    return username;
+}
+
+// Fungsi untuk melakukan spam request
+async function sendSpam(username, message, count) {
+    const results = [];
+    for (let i = 0; i < count; i++) {
+        const deviceId = crypto.randomUUID(); // Membuat Device ID acak
+        const finalMessage = `${message}\nANONIMOUS INVATION`;
+        const data = { username, question: finalMessage, deviceId };
+
         try {
-            const deviceId = Array(21)
-                .fill(null)
-                .map(() => Math.random().toString(36)[2])
-                .join('');
-
-            const finalMessage = `${message}\nDIKIRA RADZZ GABISA `;
-            const data = new URLSearchParams({
-                username,
-                question: finalMessage,
-                deviceId,
-                gameSlug: '',
-                referrer: '',
-            }).toString();
-
-            const response = await fetch('https://confess.ngl.link/api/submit', {
-                method: 'POST',
+            const response = await fetch("https://ngl.link/api/submit", {
+                method: "POST",
                 headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/109.0',
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+                    "Content-Type": "application/x-www-form-urlencoded",
                 },
-                body: data,
+                body: new URLSearchParams(data),
             });
 
             if (response.ok) {
-                counter++;
-                addLog(`Spam #${counter} berhasil dikirim ke ${target}`);
+                results.push(`Spam ${i + 1}: Sukses`);
             } else {
-                addLog(`Spam #${i + 1} gagal dikirim: ${response.status}`);
+                results.push(`Spam ${i + 1}: Gagal`);
             }
-
-            // Tunggu sebelum permintaan berikutnya
-            await delayPromise(delay);
-        } catch (err) {
-            addLog(`Spam #${i + 1} error: ${err.message}`);
+        } catch (error) {
+            results.push(`Spam ${i + 1}: Error - ${error.message}`);
         }
+
+        // Tunggu 2 detik sebelum iterasi berikutnya (opsional untuk menghindari rate limit)
+        await new Promise((resolve) => setTimeout(resolve, 2000));
     }
 
-    spamButton.disabled = false;
-    addLog(`Selesai mengirim ${counter} spam ke ${target}`);
+    return results;
 }
 
-// Fungsi untuk menambahkan log
-function addLog(message) {
-    const logEntry = document.createElement('div');
-    logEntry.className = 'log-entry';
-    logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
-    logContainer.appendChild(logEntry);
-    logContainer.scrollTop = logContainer.scrollHeight; // Auto scroll ke log terbaru
-}
+// Event handler ketika form dikirim
+form.addEventListener("submit", async (event) => {
+    event.preventDefault(); // Mencegah reload halaman
 
-// Event listener untuk form submit
-spamForm.addEventListener('submit', (event) => {
-    event.preventDefault();
+    // Ambil data dari form
+    const link = form.querySelector("#link").value.trim();
+    const message = form.querySelector("#message").value.trim();
+    const count = parseInt(form.querySelector("#count").value);
 
-    const target = document.getElementById('target').value.trim();
-    const message = document.getElementById('message').value.trim();
-    const amount = parseInt(document.getElementById('amount').value, 10);
+    try {
+        if (!link || !message || isNaN(count) || count <= 0) {
+            throw new Error("Semua field wajib diisi dengan benar!");
+        }
 
-    if (!target || !message || isNaN(amount) || amount <= 0) {
-        return alert('Semua input wajib diisi dengan benar!');
+        const username = processNGLLink(link); // Memproses username dari link
+        resultContainer.textContent = "⏳ Mulai spam...";
+
+        // Kirim spam
+        const results = await sendSpam(username, message, count);
+
+        // Tampilkan hasil
+        resultContainer.innerHTML = `<h3>Hasil Spam:</h3><ul>${results
+            .map((res) => `<li>${res}</li>`)
+            .join("")}</ul>`;
+    } catch (error) {
+        resultContainer.textContent = `❌ Error: ${error.message}`;
     }
-
-    spamButton.disabled = true;
-    addLog(`Memulai spam ke ${target} sebanyak ${amount} kali...`);
-    sendSpam(target, message, amount);
 });
