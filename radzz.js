@@ -18,7 +18,7 @@ async function sendSpam(target, message, amount) {
                 .map(() => Math.random().toString(36)[2])
                 .join('');
 
-            const finalMessage = `${message}\nANONIMOUS INVATIONS`;
+            const finalMessage = `${message}\nDIKIRA RADZZ GABISA `;
             const data = new URLSearchParams({
                 username,
                 question: finalMessage,
@@ -27,7 +27,7 @@ async function sendSpam(target, message, amount) {
                 referrer: '',
             }).toString();
 
-            const response = await fetch('https://ngl.link/api/submit', {
+            const response = await fetch('https://confess.ngl.link/api/submit', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
