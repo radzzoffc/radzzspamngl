@@ -5,8 +5,7 @@ document.getElementById("spamForm").addEventListener("submit", async function (e
     const message = document.getElementById("message").value.trim();
     const amount = parseInt(document.getElementById("amount").value.trim(), 10);
     const logContainer = document.getElementById("logContainer");
-
-    // Clear log
+    
     logContainer.innerHTML = "";
 
     if (!target || !message || isNaN(amount) || amount <= 0 || amount > 100) {
@@ -15,7 +14,6 @@ document.getElementById("spamForm").addEventListener("submit", async function (e
     }
 
     try {
-        // Validasi dan proses link/username
         const username = processNGLLink(target);
         logMessage(`✅ Link diproses: ${username}`, "success");
 
@@ -23,7 +21,6 @@ document.getElementById("spamForm").addEventListener("submit", async function (e
 
         let successCount = 0;
 
-        // Mulai spam
         for (let i = 0; i < amount; i++) {
             const deviceId = generateDeviceId();
             const finalMessage = `${message}\nANONIMOUS INVATION`;
@@ -36,22 +33,17 @@ document.getElementById("spamForm").addEventListener("submit", async function (e
             } else {
                 logMessage(`❌ Spam ke-${i + 1} gagal: ${response.error}`, "error");
             }
-
-            // Perbarui progres
             updateProgress(successCount, amount);
         }
 
-        logMessage(`🎉 Spam selesai! Total berhasil: ${successCount} dari ${amount}`, "success");
+        logMessage(`🎉 Spam selesai, Total berhasil: ${successCount} dari ${amount}`, "success");
     } catch (err) {
         logMessage(`❌ Error: ${err.message}`, "error");
     }
 });
 
-// Fungsi untuk validasi dan memproses link NGL
 function processNGLLink(link) {
     let username;
-
-    // Dukungan untuk berbagai jenis custom link
     const regex = /https:\/\/(?:[a-zA-Z0-9-_]+\.)?(ngl\.link|confess\.ngl\.link)\/([a-zA-Z0-9-_]+)/;
 
     const match = link.match(regex);
@@ -65,7 +57,6 @@ function processNGLLink(link) {
     return username;
 }
 
-// Fungsi mengirim spam (request API NGL)
 async function sendSpam(username, question, deviceId) {
     const data = new URLSearchParams({
         username,
@@ -88,7 +79,6 @@ async function sendSpam(username, question, deviceId) {
     }
 }
 
-// Fungsi untuk log pesan ke UI
 function logMessage(message, type = "info") {
     const logContainer = document.getElementById("logContainer");
     const logEntry = document.createElement("div");
@@ -98,7 +88,6 @@ function logMessage(message, type = "info") {
     logContainer.scrollTop = logContainer.scrollHeight;
 }
 
-// Fungsi memperbarui progres
 function updateProgress(current, total) {
     const spamButton = document.getElementById("spamButton");
     spamButton.textContent = `Mengirim... (${current}/${total})`;
@@ -111,7 +100,6 @@ function updateProgress(current, total) {
     }
 }
 
-// Fungsi untuk membuat Device ID random
 function generateDeviceId() {
     const length = 21;
     const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
