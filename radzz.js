@@ -8,8 +8,8 @@ document.getElementById("spamForm").addEventListener("submit", async function (e
     
     logContainer.innerHTML = "";
 
-    if (!target || !message || isNaN(amount) || amount <= 0 || amount > 100) {
-        logMessage("⚠️ Pastikan semua input valid (target, pesan, jumlah <= 100)", "error");
+    if (!target || !message || isNaN(amount) || amount <= 0 || amount > 99999) {
+        logMessage("⚠️ Pastikan semua input valid (target, pesan, jumlah <= null)", "error");
         return;
     }
 
