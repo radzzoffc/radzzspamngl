@@ -35,118 +35,141 @@ let devtools = {
   }, 1000);
 })();
 
+const userAgents = [
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+  "Mozilla/5.0 (Linux; Android 11; SM-G991B)",
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X)",
+  "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:91.0)"
+];
+
+function getRandomUserAgent() {
+  return userAgents[Math.floor(Math.random() * userAgents.length)];
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 document.getElementById("spamForm").addEventListener("submit", async function (e) {
-    e.preventDefault();
+  e.preventDefault();
 
-    const target = document.getElementById("target").value.trim();
-    const message = document.getElementById("message").value.trim();
-    const amount = parseInt(document.getElementById("amount").value.trim(), 10);
-    const logContainer = document.getElementById("logContainer");
-    
-    logContainer.innerHTML = "";
+  const target = document.getElementById("target").value.trim();
+  const message = document.getElementById("message").value.trim();
+  const amount = parseInt(document.getElementById("amount").value.trim(), 10);
+  const logContainer = document.getElementById("logContainer");
+  const spamButton = document.getElementById("spamButton");
 
-    if (!target || !message || isNaN(amount) || amount <= 0 || amount > 99999) {
-        logMessage("Pastikan semua input valid (target, pesan, jumlah <= null)", "error");
-        return;
+  logContainer.innerHTML = "";
+
+  if (!target || !message || isNaN(amount) || amount <= 0 || amount > 99999) {
+    logMessage("Pastikan semua input valid (target, pesan, jumlah <= null)", "error");
+    return;
+  }
+
+  try {
+    const username = processNGLLink(target);
+    logMessage(`Sended: ${username}`, "success");
+
+    logMessage(`Started with amount ${amount} Spams...`, "info");
+
+    let successCount = 0;
+
+    for (let i = 0; i < amount; i++) {
+      const deviceId = generateDeviceId();
+      const finalMessage = `${message}\nANONIMOUS INVATION`;
+
+      const response = await sendSpam(username, finalMessage, deviceId);
+
+      if (response.success) {
+        successCount++;
+        logMessage(`${i + 1} berhasil: ${finalMessage}`, "success");
+      } else {
+        logMessage(`${i + 1} gagal: ${response.error || "Tidak diterima"}`, "error");
+      }
+
+      updateProgress(successCount, amount);
+      await sleep(1000);
     }
 
-    try {
-        const username = processNGLLink(target);
-        logMessage(`Sended: ${username}`, "success");
-
-        logMessage(`Started with ammout ${amount} Spams...`, "info");
-
-        let successCount = 0;
-
-        for (let i = 0; i < amount; i++) {
-            const deviceId = generateDeviceId();
-            const finalMessage = `${message}\nANONIMOUS INVATION`;
-
-            const response = await sendSpam(username, finalMessage, deviceId);
-
-            if (response.status === 200) {
-                successCount++;
-                logMessage(`${i + 1} berhasil: ${finalMessage}`, "success");
-            } else {
-                logMessage(`${i + 1} gagal: ${response.error}`, "error");
-            }
-            updateProgress(successCount, amount);
-        }
-
-        logMessage(`Done Spamming, Total Succes count: ${successCount} from ${amount}`, "success");
-    } catch (err) {
-        logMessage(`Error: ${err.message}`, "error");
-    }
+    logMessage(`Done Spamming, Total Success: ${successCount} dari ${amount}`, "success");
+  } catch (err) {
+    logMessage(`Error: ${err.message}`, "error");
+  }
 });
 
 function processNGLLink(link) {
-    let username;
-    const regex = /https:\/\/(?:[a-zA-Z0-9-_]+\.)?(ngl\.link|confess\.ngl\.link)\/([a-zA-Z0-9-_]+)/;
+  let username;
+  const regex = /https:\/\/(?:[a-zA-Z0-9-_]+\.)?(ngl\.link|confess\.ngl\.link)\/([a-zA-Z0-9-_]+)/;
 
-    const match = link.match(regex);
+  const match = link.match(regex);
 
-    if (match && match[2]) {
-        username = match[2];
-    } else {
-        throw new Error("Link tidak valid. Gunakan format yang sesuai.");
-    }
+  if (match && match[2]) {
+    username = match[2];
+  } else {
+    throw new Error("Link tidak valid. Gunakan format yang sesuai.");
+  }
 
-    return username;
+  return username;
 }
 
 async function sendSpam(username, question, deviceId) {
-    const data = new URLSearchParams({
-        username,
-        question,
-        deviceId,
+  const data = new URLSearchParams({
+    username,
+    question,
+    deviceId,
+  });
+
+  try {
+    const response = await fetch("https://ngl.link/api/submit", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+        "User-Agent": getRandomUserAgent(),
+      },
+      body: data.toString(),
     });
 
-    try {
-        const response = await fetch("https://ngl.link/api/submit", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-            },
-            body: data.toString(),
-        });
+    const text = await response.text();
+    const success = text.includes("Thanks") || text.includes("terima") || response.status === 200;
 
-        return { status: response.status };
-    } catch (error) {
-        return { status: 500, error: error.message };
-    }
+    return { status: response.status, success };
+  } catch (error) {
+    return { status: 500, error: error.message };
+  }
 }
 
 function logMessage(message, type = "info") {
-    const logContainer = document.getElementById("logContainer");
-    const logEntry = document.createElement("div");
-    logEntry.classList.add("log-entry", type);
-    logEntry.textContent = message;
-    logContainer.appendChild(logEntry);
-    logContainer.scrollTop = logContainer.scrollHeight;
+  const logContainer = document.getElementById("logContainer");
+  const logEntry = document.createElement("div");
+  logEntry.classList.add("log-entry", type);
+  logEntry.textContent = message;
+  logContainer.appendChild(logEntry);
+  logContainer.scrollTop = logContainer.scrollHeight;
 }
 
 function updateProgress(current, total) {
-    const spamButton = document.getElementById("spamButton");
-    spamButton.textContent = `Mengirim... (${current}/${total})`;
+  const spamButton = document.getElementById("spamButton");
+  spamButton.textContent = `Mengirim... (${current}/${total})`;
 
-    if (current === total) {
-        spamButton.textContent = "Kirimkan";
-        spamButton.disabled = false;
-    } else {
-        spamButton.disabled = true;
-    }
+  if (current === total) {
+    spamButton.textContent = "Kirimkan";
+    spamButton.disabled = false;
+  } else {
+    spamButton.disabled = true;
+  }
 }
 
 function generateDeviceId() {
-    const length = 21;
-    const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    let result = "";
-    for (let i = 0; i < length; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
+  const length = 21;
+  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let result = "";
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
 }
 
 particlesJS.load('particles-js', 'particles.json', function() {
-    console.log('Particles loaded.');
+  console.log('Particles loaded.');
 });
